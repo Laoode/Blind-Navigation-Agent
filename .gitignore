@@ -1,3 +1,4 @@
 ml-fastvlm/
 .env
 venv/
+checkpoints/
