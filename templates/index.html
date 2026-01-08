@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blind Navigation Assistant</title>
+    <style>
+        :root {
+            --bg-primary: #0a0a0a;
+            --bg-secondary: #1a1a1a;
+            --bg-tertiary: #2a2a2a;
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0a0;
+            --accent: #4a9eff;
+            --accent-hover: #6bb3ff;
+            --success: #4ade80;
+            --warning: #fbbf24;
+            --danger: #f87171;
+            --border: #333333;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        header {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+        }
+        
+        header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+        }
+        
+        header p {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+        
+        main {
+            flex: 1;
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 1px;
+            background-color: var(--border);
+            max-height: calc(100vh - 80px);
+        }
+        
+        .video-section {
+            background-color: var(--bg-primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            position: relative;
+        }
+        
+        #videoFeed {
+            width: 100%;
+            max-width: 640px;
+            aspect-ratio: 4/3;
+            background-color: var(--bg-tertiary);
+            border-radius: 8px;
+            object-fit: cover;
+        }
+        
+        #canvas {
+            display: none;
+        }
+        
+        .video-status {
+            position: absolute;
+            top: 2.5rem;
+            left: 2.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .status-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--danger);
+        }
+        
+        .status-indicator.active {
+            background-color: var(--success);
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        .control-panel {
+            background-color: var(--bg-secondary);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .panel-section {
+            padding: 1.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .panel-section:last-child {
+            border-bottom: none;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .panel-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            margin-bottom: 0.75rem;
+        }
+        
+        input[type="text"],
+        textarea,
+        select {
+            width: 100%;
+            background-color: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0.75rem;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            font-family: inherit;
+            resize: none;
+        }
+        
+        input[type="text"]:focus,
+        textarea:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+        
+        .controls-row {
+            display: flex;
+            gap: 0.75rem;
+            align-items: center;
+        }
+        
+        select {
+            flex: 1;
+        }
+        
+        button {
+            background-color: var(--accent);
+            color: var(--text-primary);
+            border: none;
+            border-radius: 6px;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.15s;
+        }
+        
+        button:hover {
+            background-color: var(--accent-hover);
+        }
+        
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        button.stop {
+            background-color: var(--danger);
+        }
+        
+        button.stop:hover {
+            background-color: #ef4444;
+        }
+        
+        .response-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
+        }
+        
+        #responseText {
+            flex: 1;
+            min-height: 200px;
+            line-height: 1.6;
+        }
+        
+        .stats {
+            display: flex;
+            gap: 1.5rem;
+            margin-top: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+        
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .stat-value {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        @media (max-width: 900px) {
+            main {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr;
+            }
+            
+            .video-section {
+                padding: 1rem;
+            }
+            
+            #videoFeed {
+                max-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Blind Navigation Assistant</h1>
+        <p>Multi-agent system using FastVLM and YOLOv8</p>
+    </header>
+    
+    <main>
+        <section class="video-section">
+            <div class="video-status">
+                <div class="status-indicator" id="statusIndicator"></div>
+                <span id="statusText">Camera inactive</span>
+            </div>
+            <video id="videoFeed" autoplay playsinline></video>
+            <canvas id="canvas"></canvas>
+        </section>
+        
+        <section class="control-panel">
+            <div class="panel-section">
+                <div class="panel-label">API Endpoint</div>
+                <input type="text" id="baseURL" value="http://localhost:8000">
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-label">Instruction</div>
+                <textarea id="instructionText" rows="2">Describe what is in front of me and guide my navigation.</textarea>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-label">Controls</div>
+                <div class="controls-row">
+                    <select id="intervalSelect">
+                        <option value="500">500ms</option>
+                        <option value="1000" selected>1 second</option>
+                        <option value="2000">2 seconds</option>
+                        <option value="3000">3 seconds</option>
+                        <option value="5000">5 seconds</option>
+                    </select>
+                    <button id="startButton">Start</button>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-label">Navigation Guidance</div>
+                <div class="response-area">
+                    <textarea id="responseText" readonly placeholder="Navigation guidance will appear here..."></textarea>
+                    <div class="stats">
+                        <div class="stat-item">
+                            <span>Objects:</span>
+                            <span class="stat-value" id="objectCount">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span>Latency:</span>
+                            <span class="stat-value" id="latency">--</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script>
+        const video = document.getElementById('videoFeed');
+        const canvas = document.getElementById('canvas');
+        const baseURL = document.getElementById('baseURL');
+        const instructionText = document.getElementById('instructionText');
+        const responseText = document.getElementById('responseText');
+        const intervalSelect = document.getElementById('intervalSelect');
+        const startButton = document.getElementById('startButton');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const statusText = document.getElementById('statusText');
+        const objectCount = document.getElementById('objectCount');
+        const latency = document.getElementById('latency');
+
+        let stream = null;
+        let intervalId = null;
+        let isProcessing = false;
+        let requestInFlight = false;
+
+        async function initCamera() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        width: { ideal: 640 },
+                        height: { ideal: 480 },
+                        facingMode: 'environment'
+                    }, 
+                    audio: false 
+                });
+                video.srcObject = stream;
+                statusIndicator.classList.add('active');
+                statusText.textContent = 'Camera ready';
+                responseText.value = 'Camera access granted. Press Start to begin navigation assistance.';
+            } catch (err) {
+                console.error('Camera error:', err);
+                statusText.textContent = 'Camera error';
+                responseText.value = `Camera access failed: ${err.message}. Please grant camera permissions.`;
+            }
+        }
+
+        function captureImage() {
+            if (!stream || !video.videoWidth) {
+                return null;
+            }
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            return canvas.toDataURL('image/jpeg', 0.8);
+        }
+
+        async function sendRequest() {
+            if (!isProcessing || requestInFlight) {
+                return;
+            }
+
+            const imageBase64 = captureImage();
+            if (!imageBase64) {
+                responseText.value = 'Failed to capture image from camera.';
+                return;
+            }
+
+            requestInFlight = true;
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch(`${baseURL.value}/v1/chat/completions`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        max_tokens: 256,
+                        messages: [
+                            { 
+                                role: 'user', 
+                                content: [
+                                    { type: 'text', text: instructionText.value },
+                                    { type: 'image_url', image_url: { url: imageBase64 } }
+                                ] 
+                            }
+                        ]
+                    })
+                });
+
+                const elapsed = Math.round(performance.now() - startTime);
+                latency.textContent = `${elapsed}ms`;
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    responseText.value = `Server error: ${response.status} - ${errorText}`;
+                    return;
+                }
+
+                const data = await response.json();
+                const content = data.choices?.[0]?.message?.content || 'No response';
+                responseText.value = content;
+
+                // Try to get object count from custom endpoint
+                try {
+                    const navResponse = await fetch(`${baseURL.value}/api/navigate`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            instruction: instructionText.value,
+                            image_base64: imageBase64
+                        })
+                    });
+                    if (navResponse.ok) {
+                        const navData = await navResponse.json();
+                        objectCount.textContent = navData.objects_detected || 0;
+                    }
+                } catch (e) {
+                    // Ignore - stats are optional
+                }
+
+            } catch (error) {
+                console.error('Request failed:', error);
+                responseText.value = `Connection error: ${error.message}`;
+            } finally {
+                requestInFlight = false;
+            }
+        }
+
+        function handleStart() {
+            if (!stream) {
+                responseText.value = 'Camera not available. Please grant permissions and refresh.';
+                return;
+            }
+
+            isProcessing = true;
+            startButton.textContent = 'Stop';
+            startButton.classList.add('stop');
+            instructionText.disabled = true;
+            intervalSelect.disabled = true;
+            baseURL.disabled = true;
+            statusText.textContent = 'Processing...';
+
+            const intervalMs = parseInt(intervalSelect.value, 10);
+            sendRequest();
+            intervalId = setInterval(sendRequest, intervalMs);
+        }
+
+        function handleStop() {
+            isProcessing = false;
+            if (intervalId) {
+                clearInterval(intervalId);
+                intervalId = null;
+            }
+
+            startButton.textContent = 'Start';
+            startButton.classList.remove('stop');
+            instructionText.disabled = false;
+            intervalSelect.disabled = false;
+            baseURL.disabled = false;
+            statusText.textContent = 'Camera ready';
+        }
+
+        startButton.addEventListener('click', () => {
+            if (isProcessing) {
+                handleStop();
+            } else {
+                handleStart();
+            }
+        });
+
+        window.addEventListener('DOMContentLoaded', initCamera);
+
+        window.addEventListener('beforeunload', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            if (intervalId) {
+                clearInterval(intervalId);
+            }
+        });
+    </script>
+</body>
+</html>
